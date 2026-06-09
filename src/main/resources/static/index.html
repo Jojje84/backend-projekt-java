@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+    <meta charset="UTF-8">
+    <title>Hotellbokningssystem</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 30px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: #1f2937;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        label {
+            display: block;
+            margin-top: 12px;
+            font-weight: bold;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 6px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        button {
+            margin-top: 15px;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #2563eb;
+            color: white;
+            cursor: pointer;
+            font-size: 15px;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        .room {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .success {
+            color: green;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        .error {
+            color: red;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        pre {
+            background: #111827;
+            color: #e5e7eb;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .info {
+            color: #4b5563;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Hotellbokningssystem</h1>
+
+    <div class="card">
+        <h2>JWT-login</h2>
+        <p class="info">Vanlig användare: <b>user / 1234</b></p>
+        <p class="info">Admin: <b>admin / admin123</b></p>
+
+        <label>Användarnamn</label>
+        <input type="text" id="username" value="user">
+
+        <label>Lösenord</label>
+        <input type="password" id="password" value="1234">
+
+        <button onclick="login()">Logga in</button>
+
+        <div id="loginResult"></div>
+    </div>
+
+    <div class="card">
+        <h2>Tillgängliga rum</h2>
+        <button onclick="loadRooms()">Visa rum</button>
+        <div id="rooms"></div>
+    </div>
+
+    <div class="card">
+        <h2>Skapa bokning</h2>
+
+        <label>Gästens namn</label>
+        <input type="text" id="guestName" value="Sara Ahmed">
+
+        <label>Rumstyp</label>
+        <select id="roomType">
+            <option>Enkelrum</option>
+            <option>Dubbelrum</option>
+            <option>Svit</option>
+        </select>
+
+        <label>Antal gäster</label>
+        <input type="number" id="numberOfGuests" value="2">
+
+        <label>Antal nätter</label>
+        <input type="number" id="nights" value="2">
+
+        <button onclick="createBooking()">Boka rum</button>
+
+        <div id="bookingResult"></div>
+    </div>
+
+    <div class="card">
+        <h2>Admin: Hantera bokningar</h2>
+        <p class="info">Logga in som admin / admin123 innan du testar detta.</p>
+        <button onclick="loadBookings()">Visa bokningar</button>
+        <div id="bookings"></div>
+    </div>
+</div>
+
+<script>
+    let jwtToken = "";
+
+    async function login() {
+        const loginResult = document.getElementById("loginResult");
+        loginResult.innerHTML = "";
+
+        const loginData = {
+            username: document.getElementById("username").value,
+            password: document.getElementById("password").value
+        };
+
+        try {
+            const response = await fetch("/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(loginData)
+            });
+
+            if (!response.ok) {
+                loginResult.innerHTML = "<p class='error'>Fel användarnamn eller lösenord.</p>";
+                jwtToken = "";
+                return;
+            }
+
+            const data = await response.json();
+            jwtToken = data.token;
+
+            loginResult.innerHTML = `
+                <p class="success">Inloggad med JWT-token!</p>
+                <p class="info">Token:</p>
+                <pre>${jwtToken}</pre>
+            `;
+        } catch (error) {
+            loginResult.innerHTML = "<p class='error'>Något gick fel vid inloggning.</p>";
+        }
+    }
+
+    function getAuthHeader() {
+        return "Bearer " + jwtToken;
+    }
+
+    function checkLogin(element) {
+        if (!jwtToken) {
+            element.innerHTML = "<p class='error'>Du måste logga in först.</p>";
+            return false;
+        }
+        return true;
+    }
+
+    async function loadRooms() {
+        const roomsDiv = document.getElementById("rooms");
+        roomsDiv.innerHTML = "";
+
+        if (!checkLogin(roomsDiv)) return;
+
+        try {
+            const response = await fetch("/api/rooms", {
+                method: "GET",
+                headers: {
+                    "Authorization": getAuthHeader()
+                }
+            });
+
+            if (!response.ok) {
+                roomsDiv.innerHTML = "<p class='error'>Kunde inte hämta rum. Kontrollera att du är inloggad.</p>";
+                return;
+            }
+
+            const rooms = await response.json();
+
+            rooms.forEach(room => {
+                roomsDiv.innerHTML += `
+                    <div class="room">
+                        <b>${room.roomType}</b><br>
+                        Lediga rum: ${room.availableRooms}<br>
+                        Max gäster: ${room.maxGuests}<br>
+                        Pris per natt: ${room.pricePerNight} kr
+                    </div>
+                `;
+            });
+        } catch (error) {
+            roomsDiv.innerHTML = "<p class='error'>Något gick fel.</p>";
+        }
+    }
+
+    async function createBooking() {
+        const resultDiv = document.getElementById("bookingResult");
+        resultDiv.innerHTML = "";
+
+        if (!checkLogin(resultDiv)) return;
+
+        const booking = {
+            guestName: document.getElementById("guestName").value,
+            roomType: document.getElementById("roomType").value,
+            numberOfGuests: Number(document.getElementById("numberOfGuests").value),
+            nights: Number(document.getElementById("nights").value)
+        };
+
+        try {
+            const response = await fetch("/api/bookings", {
+                method: "POST",
+                headers: {
+                    "Authorization": getAuthHeader(),
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(booking)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                resultDiv.innerHTML = `<p class="error">${data.message}</p>`;
+                return;
+            }
+
+            resultDiv.innerHTML = `
+                <p class="success">Bokningen skapades!</p>
+                <pre>${JSON.stringify(data, null, 2)}</pre>
+            `;
+
+            loadRooms();
+        } catch (error) {
+            resultDiv.innerHTML = "<p class='error'>Något gick fel vid bokningen.</p>";
+        }
+    }
+
+    async function loadBookings() {
+        const bookingsDiv = document.getElementById("bookings");
+        bookingsDiv.innerHTML = "";
+
+        if (!checkLogin(bookingsDiv)) return;
+
+        try {
+            const response = await fetch("/api/bookings", {
+                method: "GET",
+                headers: {
+                    "Authorization": getAuthHeader()
+                }
+            });
+
+            if (!response.ok) {
+                bookingsDiv.innerHTML = "<p class='error'>Du har inte behörighet. Logga in som admin.</p>";
+                return;
+            }
+
+            const bookings = await response.json();
+
+            if (bookings.length === 0) {
+                bookingsDiv.innerHTML = "<p>Det finns inga bokningar.</p>";
+                return;
+            }
+
+            bookings.forEach(booking => {
+                bookingsDiv.innerHTML += `
+                    <div class="room">
+                        <b>Bokning #${booking.id}</b><br>
+                        Gäst: ${booking.guestName}<br>
+                        Rumstyp: ${booking.roomType}<br>
+                        Antal gäster: ${booking.numberOfGuests}<br>
+                        Antal nätter: ${booking.nights}<br>
+                        Totalpris: ${booking.totalPrice} kr<br>
+                        <button onclick="deleteBooking(${booking.id})">Radera bokning</button>
+                    </div>
+                `;
+            });
+        } catch (error) {
+            bookingsDiv.innerHTML = "<p class='error'>Något gick fel.</p>";
+        }
+    }
+
+    async function deleteBooking(id) {
+        const bookingsDiv = document.getElementById("bookings");
+
+        if (!checkLogin(bookingsDiv)) return;
+
+        try {
+            const response = await fetch("/api/bookings/" + id, {
+                method: "DELETE",
+                headers: {
+                    "Authorization": getAuthHeader()
+                }
+            });
+
+            if (!response.ok) {
+                bookingsDiv.innerHTML = "<p class='error'>Kunde inte radera bokningen. Kontrollera att du är inloggad som admin.</p>";
+                return;
+            }
+
+            bookingsDiv.innerHTML = "<p class='success'>Bokningen har raderats.</p>";
+
+            setTimeout(() => {
+                loadBookings();
+                loadRooms();
+            }, 500);
+
+        } catch (error) {
+            bookingsDiv.innerHTML = "<p class='error'>Något gick fel vid radering.</p>";
+        }
+    }
+</script>
+
+</body>
+</html>
