@@ -2,6 +2,7 @@ package com.example.backendprojektjava.controller;
 
 import com.example.backendprojektjava.model.Booking;
 import com.example.backendprojektjava.service.BookingService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,7 +18,7 @@ public class BookingController {
     }
 
     @PostMapping
-    public Booking createBooking(@RequestBody Booking booking) {
+    public Booking createBooking(@Valid @RequestBody Booking booking) {
         return bookingService.createBooking(booking);
     }
 

@@ -1,12 +1,31 @@
 package com.example.backendprojektjava.model;
 
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
+
 public class Booking {
 
     private Long id;
+
+    @NotBlank(message = "Namn får inte vara tomt.")
     private String guestName;
+
+    @NotBlank(message = "Rumstyp får inte vara tom.")
+    @Pattern(
+            regexp = "Enkelrum|Dubbelrum|Svit",
+            message = "Rumstyp måste vara Enkelrum, Dubbelrum eller Svit."
+    )
     private String roomType;
+
+    @Min(value = 1, message = "Antal gäster måste vara minst 1.")
+    @Max(value = 3, message = "Antal gäster får vara max 3.")
     private int numberOfGuests;
+
+    @Min(value = 1, message = "Antal nätter måste vara minst 1.")
     private int nights;
+
     private int totalPrice;
 
     public Booking() {
