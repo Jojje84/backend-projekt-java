@@ -1,0 +1,14 @@
+name: "Build"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: [self-hosted, ForgeCore]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build starter
+        run: |
+          echo "ForgeCore starter workflow: Build"
+          echo "Edit this workflow in GitHub to add your real commands."
